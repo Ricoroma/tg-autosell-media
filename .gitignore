@@ -8,3 +8,4 @@
 *.jpg
 data/database.db
 *.png
+settings.ini
