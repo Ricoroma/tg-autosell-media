@@ -276,7 +276,7 @@ async def buy_from_album(call: CallbackQuery, state: FSMContext):
             message = await bot.send_photo(call.from_user.id, photo[2])
             db.add_file_id(photo[0], message.photo[-1].file_id)
         else:
-            await call.message.answer(f'Ссылка на альбом - {album[3]}')
+            await bot.send_document(call.from_user.id, album[3])
         db.set_balance(call.from_user.id, balance - price)
 
 
@@ -319,19 +319,12 @@ async def start_adding_album(message: Message, state: FSMContext):
 async def enter_alb_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await States.album_path.set()
-    await message.answer('Путь')
+    await message.answer('Архив')
 
 
-@dp.message_handler(state=States.album_path)
-async def enter_path(message: Message, state: FSMContext):
-    await state.update_data(path=message.text)
-    await States.album_link.set()
-    await message.answer('Линк')
-
-
-@dp.message_handler(state=States.album_link)
+@dp.message_handler(state=States.album_path, content_types=types.ContentType.DOCUMENT)
 async def enter_link(message: Message, state: FSMContext):
-    await state.update_data(link=message.text)
+    await state.update_data(arc=message.document.file_id)
     await States.album_prices.set()
     await message.answer('цены (фото пробел видео пробел альбом)')
 
@@ -356,7 +349,11 @@ async def enter_prewiew(message: Message, state: FSMContext):
     file_id = message.photo[-1].file_id
 
     data = await state.get_data()
-    db.create_album(data['name'], file_id, data['link'], data['path'], data['prices'], data['description'])
+    archieve = await bot.get_file(data['arc'])
+    path = f'downloaded/{archieve.file_id}.zip'
+    await bot.download_file(archieve.file_path, path)
+
+    db.create_album(data['name'], file_id, data['arc'], path, data['prices'], data['description'])
     await state.finish()
 
 

@@ -9,4 +9,4 @@ admin_link = data["admin_link"]
 link = data["link"]
 cryptopay_token = data['cryptopay_token']
 
-sub_channels = [int(i) for i in data['channels_to_sub'].split(',')]
+sub_channels = data['channels_to_sub'].split(',')
