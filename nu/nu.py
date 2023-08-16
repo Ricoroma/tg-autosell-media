@@ -236,7 +236,7 @@ async def show_albums(update: Message | CallbackQuery, state: FSMContext):
     data = await state.get_data()
     if 'albums' in data.keys():
         albums = data['albums']
-        album = albums[int(update.data.split(':')[1])]
+        album = albums[int(update.data.split(':')[1]) if type(update) == CallbackQuery else 0]
     else:
         albums = db.get_all_albums()
         album = albums[0]
