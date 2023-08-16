@@ -74,7 +74,7 @@ def get_user_info(user_id):
 @dp.message_handler(IsSub(), state='*')
 async def send_not_sub(message: Message, state: FSMContext):
     await message.answer('Для продолжения пользования ботом вам необходимо подписаться на каналы:\n'
-                         '@all_rus_news\n\nКогда вы будете подписаны на все каналы, нажмите /start')
+                         '\n\nКогда вы будете подписаны на все каналы, нажмите /start')
     data = await state.get_data()
     if not 'ref' in data.keys():
         if message.text.startswith('/start'):
@@ -85,7 +85,7 @@ async def send_not_sub(message: Message, state: FSMContext):
 @dp.callback_query_handler(IsSub(), state='*')
 async def send_not_sub(call: CallbackQuery, state: FSMContext):
     await call.message.answer('Для продолжения пользования ботом вам необходимо подписаться на каналы:\n'
-                              '@all_rus_news\n\nКогда вы будете подписаны на все каналы, нажмите /start')
+                              '\n\nКогда вы будете подписаны на все каналы, нажмите /start')
 
 
 # Меню
@@ -373,6 +373,14 @@ async def admin_menu(message: types.Message, state: FSMContext):
             await bot.send_message(message.chat.id, f"Неверный формат команды")
 
 
+@dp.message_handler(commands=['del'], state='*')
+async def albums_to_delete(message: Message, state: FSMContext):
+    if message.from_user.id == admin_id:
+        await state.finish()
+        db.delete_album(message.text.split('-')[1].strip(' '))
+        await message.answer('Альбом удалён')
+
+
 @dp.message_handler(commands="help", state="*")
 async def admin_help(message: types.Message, state: FSMContext):
     if (message.chat.id == admin_id):
@@ -384,7 +392,7 @@ async def admin_help(message: types.Message, state: FSMContext):
 */pay all 100* - Пополнение всем
 */info 123* - Информация о пользователе с ID 123
 */add* - добавить альбом
-
+*/del - Название альбома* - удалить альбом
 📝 *Изменение настроек*
 
 */video 123* - стоимость видео

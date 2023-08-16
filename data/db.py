@@ -388,3 +388,11 @@ def get_video_from_album(album, user_id):
                 continue
             else:
                 return video
+
+
+def delete_album(album_name):
+    with sqlite3.connect('data/database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM albums WHERE name=?', (album_name,))
+        cursor.execute('DELETE FROM files WHERE album=?', (album_name,))
+        conn.commit()

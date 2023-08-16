@@ -1,4 +1,5 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from data.db import *
 
 
 def just_back():
@@ -63,7 +64,7 @@ def payment_currency_menu():
     return markup
 
 
-def check_crypto(url, invoice_id, amot):
+def check_crypto(url, invoice_id):
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [
