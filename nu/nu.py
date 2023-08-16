@@ -1,3 +1,4 @@
+import os
 import time
 
 from aiocryptopay import AioCryptoPay
@@ -354,6 +355,7 @@ async def enter_prewiew(message: Message, state: FSMContext):
     await bot.download_file(archieve.file_path, path)
 
     db.create_album(data['name'], file_id, data['arc'], path, data['prices'], data['description'])
+    os.remove(path)
     await state.finish()
 
 
