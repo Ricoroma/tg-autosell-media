@@ -36,6 +36,7 @@ def album_priview_kb(albums: list, current_album):
     markup.add(InlineKeyboardButton('🖼 Рандом фото', callback_data=f'album:{current_album[0]}:photo'),
                InlineKeyboardButton('🖼 Рандом видео', callback_data=f'album:{current_album[0]}:video')).add(
         InlineKeyboardButton('🗂 Купить альбом', callback_data=f'album:{current_album[0]}:album'))
+    markup.add(InlineKeyboardButton(f'{index+1}/{len(albums)}', callback_data='None'))
     if index == 0:
         markup.add(InlineKeyboardButton('➡️', callback_data='show_album:1'))
     elif index == len(albums) - 1:
