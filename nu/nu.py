@@ -168,7 +168,7 @@ async def crypto_bot_currency_msg(call: types.CallbackQuery, state: FSMContext):
     await call.message.edit_text(
         text=f'<b>\n\nКоличество: {data["amount_rub"]} руб\nВалюта: {call.data.split("|")[1]}\n\n'
              f'❕ Продолжите пополнеие по кнопке ниже:</b>',
-        reply_markup=check_crypto(invoice.pay_url, invoice.invoice_id, amount), parse_mode='HTML')
+        reply_markup=check_crypto(invoice.pay_url, invoice.invoice_id), parse_mode='HTML')
 
 
 @dp.callback_query_handler(text='back', state='*')
@@ -222,11 +222,11 @@ async def buy_random(call: CallbackQuery, state: FSMContext):
         db.set_balance(call.from_user.id, balance - price)
         if to_buy == 'video':
             video = db.get_random_video(call.from_user.id)
-            message = await bot.send_video(call.from_user.id, video[2])
+            message = await bot.send_video(call.from_user.id, video[2], caption=f'Альбом - {video[3]}')
             db.add_file_id(video[0], message.video.file_id)
         else:
             photo = db.get_random_photo(call.from_user.id)
-            message = await bot.send_photo(call.from_user.id, photo[2])
+            message = await bot.send_photo(call.from_user.id, photo[2], caption=f'Альбом - {photo[3]}')
             db.add_file_id(photo[0], message.photo[-1].file_id)
 
 
@@ -269,9 +269,14 @@ async def buy_from_album(call: CallbackQuery, state: FSMContext):
                                   parse_mode='HTML')
     else:
         if to_buy == 'video':
-            video = db.get_video_from_album(album[1], call.from_user.id)
-            message = await bot.send_video(call.from_user.id, video[2])
-            db.add_file_id(video[0], message.video.file_id)
+            while True:
+                try:
+                    video = db.get_video_from_album(album[1], call.from_user.id)
+                    message = await bot.send_video(call.from_user.id, video[2])
+                    db.add_file_id(video[0], message.video.file_id)
+                    break
+                except:
+                    continue
         elif to_buy == 'photo':
             photo = db.get_photo_from_album(album[1], call.from_user.id)
             message = await bot.send_photo(call.from_user.id, photo[2])
@@ -350,9 +355,12 @@ async def enter_prewiew(message: Message, state: FSMContext):
     file_id = message.photo[-1].file_id
 
     data = await state.get_data()
-    archieve = await bot.get_file(data['arc'])
-    path = f'downloaded/{archieve.file_id}.zip'
-    await bot.download_file(archieve.file_path, path)
+    try:
+        archieve = await bot.get_file(data['arc'])
+        path = f'downloaded/{archieve.file_id}.zip'
+        await bot.download_file(archieve.file_path, path)
+    except:
+        path = r'C:\Users\Роман\Downloads' + fr'\{data["name"]}.zip'
 
     db.create_album(data['name'], file_id, data['arc'], path, data['prices'], data['description'])
     os.remove(path)
