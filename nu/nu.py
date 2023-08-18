@@ -408,7 +408,7 @@ async def enter_prewiew(message: Message, state: FSMContext):
         path = f'downloaded/{archieve.file_id}.zip'
         await bot.download_file(archieve.file_path, path)
     except:
-        path = r'C:\Users\Роман\Downloads' + fr'\{data["name"]}.zip'
+        path = media_folder + fr'\{data["name"]}.zip'
 
     db.create_album(data['name'], file_id, data['arc'], path, data['prices'], data['description'])
     os.remove(path)
