@@ -1,6 +1,7 @@
 import os
+import string
 import time
-
+from data.qiwi import *
 from aiocryptopay import AioCryptoPay
 from data.cryptopay import *
 from aiogram import types
@@ -29,11 +30,6 @@ class States(StatesGroup):
     album_path = State()
     album_prices = State()
     album_desc = State()
-
-
-def get_course(value_from, value_to):
-    r = requests.get(f'https://min-api.cryptocompare.com/data/price?fsym={value_from}&tsyms={value_to}')
-    return r.json()[value_to]
 
 
 # ------------------------------
@@ -72,21 +68,35 @@ def get_user_info(user_id):
 
 
 # ------------------------------
+
+async def get_sub_channels():
+    channels = []
+    for channel_id in sub_channels:
+        channel = await bot.get_chat(channel_id)
+        channels.append((channel.title, channel.invite_link))
+    return channels
+
+
 @dp.message_handler(IsSub(), state='*')
 async def send_not_sub(message: Message, state: FSMContext):
     await message.answer('Для продолжения пользования ботом вам необходимо подписаться на каналы:\n'
-                         '\n\nКогда вы будете подписаны на все каналы, нажмите /start')
+                         '\n\nКогда вы будете подписаны на все каналы, нажмите /start',
+                         reply_markup=sub_channels_kb(await get_sub_channels()))
     data = await state.get_data()
-    if not 'ref' in data.keys():
-        if message.text.startswith('/start'):
-            ref = message.text.replace('/start ', '')
-            await state.update_data(ref=ref)
+    if not db.get_users_exist(message.from_user.id):
+        if 'ref' not in data.keys():
+            if message.text.startswith('/start '):
+                ref = message.text.replace('/start ', '')
+                await state.update_data(ref=ref)
+            else:
+                await state.update_data(ref='')
 
 
 @dp.callback_query_handler(IsSub(), state='*')
 async def send_not_sub(call: CallbackQuery, state: FSMContext):
     await call.message.answer('Для продолжения пользования ботом вам необходимо подписаться на каналы:\n'
-                              '\n\nКогда вы будете подписаны на все каналы, нажмите /start')
+                              '\n\nКогда вы будете подписаны на все каналы, нажмите /start',
+                              reply_markup=sub_channels_kb(await get_sub_channels()))
 
 
 # Меню
@@ -98,19 +108,20 @@ async def menu(message: types.Message, state: FSMContext):
     _user_id = message.chat.id
     _username = message.chat.username
     if not (db.get_users_exist(message.chat.id)):
-        if (message.text != "💼 Профиль" and (message.text.startswith("/start ") or 'ref' in data.keys())):
+        if message.text.startswith("/start ") or 'ref' in data.keys():
             if 'ref' in data.keys():
                 _ref = data['ref']
             else:
                 _ref = message.text.replace('/start ', '')
-            if (int(message.chat.id) != int(_ref)):
-                db.add_user_to_db(message.chat.id, message.chat.username, _ref, db.get_settings()[4])
-                db.set_balance(_ref, db.get_balance(_ref) + db.get_settings()[5])
-                await bot.send_message(chat_id=admin_id,
-                                       text=f"Новый пользователь: {_user_id} (@{_username})\nПригласил: {_ref}")
-                await bot.send_message(chat_id=_ref,
-                                       text=f"*Кто-то перешел по твоей ссылке!*\nБаланс пополнен на {db.get_settings()[5]}",
-                                       parse_mode='Markdown')
+            if _ref.isdigit():
+                if (int(message.chat.id) != int(_ref)):
+                    db.add_user_to_db(message.chat.id, message.chat.username, _ref, db.get_settings()[4])
+                    db.set_balance(_ref, db.get_balance(_ref) + db.get_settings()[5])
+                    await bot.send_message(chat_id=admin_id,
+                                           text=f"Новый пользователь: {_user_id} (@{_username})\nПригласил: {_ref}")
+                    await bot.send_message(chat_id=_ref,
+                                           text=f"*Кто-то перешел по твоей ссылке!*\nБаланс пополнен на {db.get_settings()[5]}",
+                                           parse_mode='Markdown')
             else:
                 db.add_user_to_db(message.chat.id, message.chat.username, 0, db.get_settings()[4])
                 await bot.send_message(chat_id=admin_id, text=f"Новый пользователь: {_user_id} (@{_username})")
@@ -132,14 +143,14 @@ async def menu(call: CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(text='refill', state='*')
-@dp.message_handler(text=["💵 Пополнить баланс"], state=States.menu)
+@dp.message_handler(text=["💵 Пополнить баланс"], state='*')
 async def menu(update: Message | CallbackQuery, state: FSMContext):
     _user_id = update.chat.id
     _username = update.chat.username
     if type(update) == CallbackQuery:
-        await update.message.edit_text(f"💵 *Введите сумму пополнения* (целое число)", parse_mode="Markdown")
+        await update.message.edit_text(f"💵 *Введите сумму пополнения* (целое количество рублей)", parse_mode="Markdown")
     else:
-        await update.answer(f"💵 *Введите сумму пополнения* (целое число)", reply_markup=just_back(),
+        await update.answer(f"💵 *Введите сумму пополнения* (целое количество рублей)", reply_markup=just_back(),
                             parse_mode="Markdown")
     await States.pay.set()
 
@@ -151,10 +162,49 @@ async def process_refill(message: Message, state: FSMContext):
     except ValueError:
         await message.answer('Вы ввели некорректную сумму. Введите целое число')
         return
+    await message.answer('💳 Выберите платёжную систему', reply_markup=decide_refill())
     await state.update_data(amount_rub=amount)
-    amount *= get_course('RUB', 'USD')
-    await message.answer('Выберите валюту оплаты', reply_markup=payment_currency_menu())
-    await state.update_data(amount=amount)
+
+
+@dp.callback_query_handler(text_startswith='refill:', state='*')
+async def choose_refill_way(call: CallbackQuery, state: FSMContext):
+    way = call.data.split(':')[1]
+    data = await state.get_data()
+    if way == 'cryptobot':
+        amount = data['amount_rub'] * get_course('RUB', 'USD')
+        await call.message.edit_text('Выберите валюту оплаты', reply_markup=payment_currency_menu())
+        await state.update_data(amount=amount)
+    else:
+        amount = data['amount_rub']
+        _code = 99 if db.get_settings()[1].isdigit() else 99999
+        _random = random_order()
+        can_auto_confirm = True if qiwi_token else False
+        adding = '__При оплате ОБЯЗАТЕЛЬНО укажите в комментарии айди (выше)__' if not db.get_settings()[
+            1].isdigit() else ''
+        await call.message.edit_text(f"""
+        *📈 Пополнение ID* `{_random}`
+        
+        Сумма - {amount} ₽
+
+        *Для оплаты перейдите по кнопке ниже*\n\n{adding}
+        """,
+                                     reply_markup=inline_keyboard(amount, _random, _code, can_auto_confirm),
+                                     parse_mode="Markdown")
+        if not can_auto_confirm:
+            await call.message.answer('После оплаты перешлите администратору сообщение выше')
+
+
+@dp.callback_query_handler(text_startswith='check_qiwi', state='*')
+async def check_qiwi_handler(call: CallbackQuery, state: FSMContext):
+    if check_qiwi(*call.data.split(':')[1:]):
+        await call.answer('✅ Пополнение успешно')
+        await call.message.delete()
+        amount = int(call.data.split(':')[2])
+        db.set_balance(call.from_user.id, db.get_balance(call.from_user.id) + amount)
+        await call.message.answer(f'Баланс пополнен на {amount} ₽', reply_markup=main_menu())
+    else:
+        await call.answer('❌ Пополнение не было осуществлено')
+        print(call.data)
 
 
 @dp.callback_query_handler(text_startswith='crypto_bot_currency', state='*')
@@ -196,7 +246,6 @@ async def user_video(message: Message, state: FSMContext):
     await state.finish()
     await message.answer(f'Цена видео - {db.get_settings()[2]}. У вас - {db.get_balance(message.from_user.id)}\n'
                          f'Купить случайное видео?', reply_markup=decide('video'))
-    await state.set_state('random')
 
 
 @dp.message_handler(text='🖼 Рандом фото', state='*')
@@ -204,10 +253,9 @@ async def user_photo(message: Message, state: FSMContext):
     await state.finish()
     await message.answer(f'Цена фото - {db.get_settings()[3]}. У вас - {db.get_balance(message.from_user.id)}\n'
                          f'Купить случайное фото?', reply_markup=decide('photo'))
-    await state.set_state('random')
 
 
-@dp.callback_query_handler(state='random', text_startswith='buy')
+@dp.callback_query_handler(text_startswith='buy')
 async def buy_random(call: CallbackQuery, state: FSMContext):
     await state.finish()
     to_buy = call.data.split(':')[1]

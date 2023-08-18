@@ -71,7 +71,7 @@ def is_video_file(filename):
 def check_db():
     _ = system("cls")
     _datetime = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
-    databaseFile = ("data/database.db")
+    databaseFile = "data/database.db"
     db = sqlite3.connect(databaseFile, check_same_thread=False)
     cursor = db.cursor()
     try:

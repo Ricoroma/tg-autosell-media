@@ -1,3 +1,4 @@
+import requests
 from aiocryptopay import AioCryptoPay
 from data.config import *
 
@@ -20,3 +21,7 @@ async def check_crypto_bot_invoice(invoice_id: int):
 	else:
 		return False
 
+
+def get_course(value_from, value_to):
+    r = requests.get(f'https://min-api.cryptocompare.com/data/price?fsym={value_from}&tsyms={value_to}')
+    return r.json()[value_to]
