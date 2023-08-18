@@ -145,8 +145,8 @@ async def menu(call: CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(text='refill', state='*')
 @dp.message_handler(text=["💵 Пополнить баланс"], state='*')
 async def menu(update: Message | CallbackQuery, state: FSMContext):
-    _user_id = update.chat.id
-    _username = update.chat.username
+    _user_id = update.from_user.id
+    _username = update.from_user.username
     if type(update) == CallbackQuery:
         await update.message.edit_text(f"💵 *Введите сумму пополнения* (целое количество рублей)", parse_mode="Markdown")
     else:
